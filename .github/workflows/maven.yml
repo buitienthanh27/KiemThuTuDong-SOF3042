@@ -66,8 +66,7 @@ jobs:
         with:
           name: test-execution-reports
           path: |
-            target/surefire-reports/
-            target/allure-results/
+            allure-results/
             app.log
 
       # --- TẠO BÁO CÁO HTML ONLINE ---
