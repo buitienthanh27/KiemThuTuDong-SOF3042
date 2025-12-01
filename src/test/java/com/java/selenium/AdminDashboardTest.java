@@ -21,7 +21,7 @@ public class AdminDashboardTest extends BaseSeleniumTest {
 
     private static final String ADMIN_USER = "admin";
     private static final String ADMIN_PASS = "123123";
-    private static final String IMAGE_PATH = "D:\\FPTPolytechnic\\SOF3042\\Vegana-Automation-Testing\\Vegana-shop\\src\\main\\resources\\static\\images\\product\\02.jpg";
+    private static final String IMAGE_PATH = System.getProperty("user.dir") + "/src/main/resources/static/images/product/02.jpg";
 
     @BeforeEach
     void setUp() {

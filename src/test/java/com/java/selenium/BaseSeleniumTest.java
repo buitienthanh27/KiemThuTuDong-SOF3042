@@ -5,8 +5,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 
 public abstract class BaseSeleniumTest {
+
 
     protected static WebDriver driver;
     // App đang chạy ở http://localhost:8080/
@@ -15,10 +17,22 @@ public abstract class BaseSeleniumTest {
     @BeforeAll
     static void setUpClass() {
         WebDriverManager.chromedriver().setup();
-        driver = new ChromeDriver();
+
+        // 2. Cấu hình Chrome Options cho CI/CD
+        ChromeOptions options = new ChromeOptions();
+
+        // --- CÁC CỜ BẮT BUỘC CHO CI/CD (LINUX) ---
+        options.addArguments("--headless"); // Chạy không giao diện (Quan trọng nhất)
+        options.addArguments("--disable-gpu"); // Tắt GPU (tránh lỗi trên server linux)
+        options.addArguments("--window-size=1920,1080"); // Giả lập màn hình to để element không bị ẩn
+        options.addArguments("--no-sandbox"); // Bắt buộc cho môi trường Docker/Linux
+        options.addArguments("--disable-dev-shm-usage"); // Khắc phục lỗi bộ nhớ chia sẻ trên Linux
+
+        // 3. Khởi tạo driver với options vừa tạo
+        driver = new ChromeDriver(options);
+
+        // Dù headless cũng nên maximize ảo để layout chuẩn
         driver.manage().window().maximize();
-        // nếu cần có thể dùng implicit wait:
-        // driver.manage().timeouts().implicitlyWait(5, TimeUnit.SECONDS);
     }
 
     @AfterAll
