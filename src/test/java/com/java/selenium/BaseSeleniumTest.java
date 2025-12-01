@@ -1,5 +1,7 @@
 package com.java.selenium;
 
+import io.qameta.allure.Allure;
+import java.io.ByteArrayInputStream;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;

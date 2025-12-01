@@ -1,15 +1,14 @@
 package com.java.selenium;
 
+import io.qameta.allure.Allure;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -26,20 +25,28 @@ public class CheckoutTest extends BaseSeleniumTest {
         wait = new WebDriverWait(driver, TIMEOUT);
     }
 
-    // --- HÀM HỖ TRỢ CHỤP ẢNH (Bạn cung cấp) ---
     public void takeScreenshot(String fileName, String pass) {
         try {
+            // 1. QUAN TRỌNG: Cuộn lên đầu trang trước tiên
+            ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, 0);");
+            Thread.sleep(500); // Chờ cuộn xong
+
+            // 2. Chụp ảnh dưới dạng Byte (Để đính kèm vào Allure Report)
+            byte[] content = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
+            Allure.addAttachment(fileName, new ByteArrayInputStream(content));
+
+            // 3. Lưu ảnh ra File (Để xem offline hoặc lưu vào Artifacts của Github)
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            // Tôi đã thêm biến 'pass' vào tên file để bạn dễ phân biệt ảnh PASS/FAIL
-            String fullFileName = "screenshots/" + fileName + "_" + pass + "_" + timestamp + ".png";
+            String fullFileName = "screenshots/ERROR_" + fileName + "_" + timestamp + ".png";
 
             File scrFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
-            Path destination = Paths.get(fullFileName);
-            Files.createDirectories(destination.getParent());
-            Files.copy(scrFile.toPath(), destination);
-            System.out.println("📸 Đã chụp ảnh bằng chứng: " + fullFileName);
+            java.nio.file.Path destination = java.nio.file.Paths.get(fullFileName);
+            java.nio.file.Files.createDirectories(destination.getParent());
+            java.nio.file.Files.copy(scrFile.toPath(), destination);
+
+            System.out.println("📸 Đã chụp ảnh và đính kèm vào Allure Report: " + fullFileName);
         } catch (Exception e) {
-            System.err.println("Lỗi khi chụp ảnh: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

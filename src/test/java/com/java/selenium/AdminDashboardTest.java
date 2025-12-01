@@ -6,7 +6,8 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
-
+import io.qameta.allure.Allure;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -38,19 +39,29 @@ public class AdminDashboardTest extends BaseSeleniumTest {
         }
     }
 
-    // Chỉ chụp ảnh khi có lỗi
     public void takeScreenshot(String fileName) {
         try {
+            // 1. QUAN TRỌNG: Cuộn lên đầu trang trước tiên
             ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, 0);");
-            Thread.sleep(500);
+            Thread.sleep(500); // Chờ cuộn xong
+
+            // 2. Chụp ảnh dưới dạng Byte (Để đính kèm vào Allure Report)
+            byte[] content = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
+            Allure.addAttachment(fileName, new ByteArrayInputStream(content));
+
+            // 3. Lưu ảnh ra File (Để xem offline hoặc lưu vào Artifacts của Github)
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             String fullFileName = "screenshots/ERROR_" + fileName + "_" + timestamp + ".png";
+
             File scrFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
             java.nio.file.Path destination = java.nio.file.Paths.get(fullFileName);
             java.nio.file.Files.createDirectories(destination.getParent());
             java.nio.file.Files.copy(scrFile.toPath(), destination);
-            System.err.println("📸 Đã chụp ảnh lỗi: " + fullFileName);
-        } catch (Exception e) {}
+
+            System.out.println("📸 Đã chụp ảnh và đính kèm vào Allure Report: " + fullFileName);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void loginAsAdmin() {
