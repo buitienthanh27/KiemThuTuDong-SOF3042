@@ -1,9 +1,7 @@
-name: Vegana Automation Test CI
+name: Vegana Automation Test CI (Upgraded)
 
 on:
   push:
-    branches: [ "master", "main" ]
-  pull_request:
     branches: [ "master", "main" ]
 
 permissions:
@@ -47,20 +45,32 @@ jobs:
           nohup java -jar target/*.jar > app.log 2>&1 &
           sleep 30
 
+      # --- CHẠY TEST ---
       - name: Run Automation Tests
-        # Thêm 'clean' để xóa dữ liệu cũ
         run: mvn clean test
         continue-on-error: true
 
-      # --- BƯỚC DEBUG QUAN TRỌNG ---
-      # Bước này sẽ in ra danh sách file trong folder kết quả.
-      # Nếu bước này báo lỗi "No such file or directory" thì tức là test chưa sinh ra file kết quả.
-      - name: List Allure Results (Debug)
+      # --- DEBUG: KIỂM TRA FILE KẾT QUẢ ---
+      - name: Check Allure Results Existence
         if: always()
         run: |
-          echo "Listing files in target/allure-results:"
-          ls -R target/allure-results || echo "Directory target/allure-results does not exist!"
+          echo "Checking target folder..."
+          ls -F target/
+          echo "Checking allure-results..."
+          ls -R target/allure-results || echo "Folder not found"
 
+      # --- NÂNG CẤP: XUẤT FILE LOG & KẾT QUẢ RA FILE ZIP ĐỂ TẢI VỀ ---
+      - name: Upload Test Reports (Artifacts)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-execution-reports
+          path: |
+            target/surefire-reports/
+            target/allure-results/
+            app.log
+
+      # --- TẠO BÁO CÁO HTML ONLINE ---
       - name: Get Allure history
         uses: actions/checkout@v4
         if: always()

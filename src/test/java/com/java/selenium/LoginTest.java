@@ -12,7 +12,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-
+@ExtendWith(TestListener.class)
 @ExtendWith(ScreenshotOnFailureExtension.class)
 public class LoginTest extends BaseSeleniumTest {
 
