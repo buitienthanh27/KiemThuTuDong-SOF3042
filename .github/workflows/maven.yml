@@ -39,34 +39,39 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
+      # --- BƯỚC QUAN TRỌNG: Chỉ Build, KHÔNG chạy server java -jar ---
       - name: Build Project
         run: mvn -B package -DskipTests
 
+      # --- CHẠY TEST ---
+      # Test sẽ tự động sinh folder 'allure-results' (thường là ở thư mục gốc hoặc target)
       - name: Run Automation Tests
-        # Clean để xóa target cũ, nhưng allure-results ở root sẽ được ghi đè
         run: mvn clean test
         continue-on-error: true
 
-      # --- DEBUG: Kiểm tra thư mục gốc ---
-      - name: Check Results Existence (Root Folder)
+      # --- DEBUG: In ra cấu trúc thư mục để tìm file ---
+      - name: Debug - List Files
         if: always()
         run: |
-          echo "Listing root directory..."
+          echo "=== ROOT DIRECTORY ==="
           ls -F
-          echo "Checking inside allure-results..."
-          ls -R allure-results || echo "Folder allure-results NOT FOUND!"
+          echo "=== TARGET DIRECTORY ==="
+          ls -F target/ || echo "No target folder"
+          echo "=== FINDING ALLURE RESULTS ==="
+          find . -type d -name "allure-results"
 
-      # --- SỬA ĐỔI 1: Upload cả folder screenshots và allure-results ở root ---
-      - name: Upload Test Reports (Artifacts)
+      # --- UPLOAD ARTIFACTS (Sửa lại đường dẫn dùng wildcards **) ---
+      # Dùng ** để tìm folder allure-results bất kể nó nằm ở root hay trong target
+      - name: Upload Test Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-execution-reports
           if-no-files-found: warn
           path: |
-            target/surefire-reports/
-            allure-results/
-            screenshots/
+            **/surefire-reports/
+            **/allure-results/
+            **/screenshots/
             app.log
 
       - name: Get Allure history
@@ -77,7 +82,8 @@ jobs:
           ref: gh-pages
           path: gh-pages
 
-      # --- SỬA ĐỔI 2: Trỏ allure_results vào thư mục gốc (bỏ chữ target/) ---
+      # --- TẠO REPORT ---
+      # Action này đủ thông minh để tìm folder allure-results
       - name: Generate Allure Report
         uses: simple-elf/allure-report-action@master
         if: always()
