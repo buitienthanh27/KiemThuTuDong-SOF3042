@@ -3,6 +3,8 @@ name: Vegana Automation Test CI
 on:
   push:
     branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
 
 permissions:
   contents: write
@@ -39,41 +41,35 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
-      # --- BƯỚC QUAN TRỌNG: Chỉ Build, KHÔNG chạy server java -jar ---
+      # 1. Build ra file .jar
       - name: Build Project
         run: mvn -B package -DskipTests
 
-      # --- CHẠY TEST ---
-      # Test sẽ tự động sinh folder 'allure-results' (thường là ở thư mục gốc hoặc target)
+      # 2. KHỞI ĐỘNG SERVER (Bắt buộc phải có bước này Selenium mới chạy được)
+      - name: Start Spring Boot App
+        run: |
+          nohup java -jar target/*.jar > app.log 2>&1 &
+          echo "Đang khởi động web, vui lòng chờ 30s..."
+          sleep 30
+
+      # 3. Chạy Test (Lúc này web đã lên ở localhost:8080)
       - name: Run Automation Tests
         run: mvn clean test
         continue-on-error: true
 
-      # --- DEBUG: In ra cấu trúc thư mục để tìm file ---
-      - name: Debug - List Files
-        if: always()
-        run: |
-          echo "=== ROOT DIRECTORY ==="
-          ls -F
-          echo "=== TARGET DIRECTORY ==="
-          ls -F target/ || echo "No target folder"
-          echo "=== FINDING ALLURE RESULTS ==="
-          find . -type d -name "allure-results"
-
-      # --- UPLOAD ARTIFACTS (Sửa lại đường dẫn dùng wildcards **) ---
-      # Dùng ** để tìm folder allure-results bất kể nó nằm ở root hay trong target
+      # 4. Upload Artifacts (Sửa đường dẫn chính xác)
       - name: Upload Test Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-execution-reports
-          if-no-files-found: warn
           path: |
-            **/surefire-reports/
-            **/allure-results/
-            **/screenshots/
+            target/surefire-reports/
+            target/allure-results/
+            screenshots/
             app.log
 
+      # 5. Chuẩn bị Deploy báo cáo
       - name: Get Allure history
         uses: actions/checkout@v4
         if: always()
@@ -82,16 +78,16 @@ jobs:
           ref: gh-pages
           path: gh-pages
 
-      # --- TẠO REPORT ---
-      # Action này đủ thông minh để tìm folder allure-results
+      # 6. Tạo báo cáo HTML (Trỏ đúng vào target/allure-results)
       - name: Generate Allure Report
         uses: simple-elf/allure-report-action@master
         if: always()
         with:
-          allure_results: allure-results
+          allure_results: target/allure-results
           allure_history: allure-history
           keep_reports: 20
 
+      # 7. Đẩy lên GitHub Pages
       - name: Deploy Report to GitHub Pages
         if: always()
         uses: peaceiris/actions-gh-pages@v3
