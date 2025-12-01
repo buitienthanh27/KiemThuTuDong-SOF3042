@@ -1,6 +1,5 @@
 name: Vegana Automation Test CI
 
-# Kịch bản sẽ chạy khi có lệnh push hoặc pull request vào nhánh master (hoặc main)
 on:
   push:
     branches: [ "master", "main" ]
@@ -9,15 +8,24 @@ on:
 
 jobs:
   test:
-    # Chạy trên máy ảo Linux mới nhất của GitHub
     runs-on: ubuntu-latest
 
+    # 1. Cấu hình Database ảo cho GitHub (Giả sử bạn dùng MySQL)
+    # QUAN TRỌNG: Bạn phải sửa mật khẩu/tên DB khớp với file application.properties của bạn
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: 123456  # Sửa thành pass DB của bạn
+          MYSQL_DATABASE: vegana_db    # Sửa thành tên DB của bạn
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
     steps:
-      # 1. Tải code từ kho lưu trữ của bạn về máy ảo
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2. Cài đặt Java 17 (Khớp với version bạn đang dùng)
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
@@ -25,7 +33,7 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # 3. Cài đặt Google Chrome (Để Selenium có trình duyệt mà chạy)
+      # 2. Cài đặt Chrome
       - name: Install Google Chrome
         run: |
           wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
@@ -33,19 +41,31 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
-      # 4. Chạy Test bằng Maven
-      # Lệnh này sẽ chạy tất cả các file có đuôi *Test.java
-      - name: Run Automation Tests
-        run: mvn -B test --file pom.xml
+      # 3. Build dự án (Tạo file .jar) nhưng chưa chạy test vội
+      - name: Build with Maven
+        run: mvn -B package -DskipTests
 
-      # 5. Lưu lại báo cáo và ảnh chụp màn hình (Artifacts)
-      # Bước này quan trọng để bạn xem lại ảnh chụp lỗi
-      - name: Upload Test Results & Screenshots
-        if: always() # Luôn chạy dù test pass hay fail
+      # 4. KHỞI ĐỘNG WEBSITE (Chạy ngầm)
+      - name: Start Spring Boot App
+        run: |
+          nohup java -jar target/*.jar > app.log 2>&1 &
+          echo "Đang khởi động web, vui lòng chờ..."
+          sleep 30 # Chờ 30 giây để web khởi động xong
+
+      # 5. Kiểm tra xem web đã lên chưa (Optional - để debug)
+      - name: Check Health
+        run: curl -v http://localhost:8080 || echo "Web chưa lên hoặc lỗi"
+
+      # 6. Giờ mới chạy Selenium Test
+      - name: Run Automation Tests
+        run: mvn test
+
+      # 7. Lưu báo cáo lỗi nếu có
+      - name: Upload Logs & Screenshots
+        if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: test-reports-and-screenshots
+          name: test-artifacts
           path: |
-            target/surefire-reports/
             screenshots/
-          retention-days: 5
+            app.log
