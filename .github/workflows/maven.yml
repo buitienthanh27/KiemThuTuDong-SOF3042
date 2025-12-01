@@ -1,4 +1,4 @@
-name: Vegana Automation Test CI (Upgraded)
+name: Vegana Automation Test CI
 
 on:
   push:
@@ -39,37 +39,36 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
-      - name: Build and Setup
-        run: |
-          mvn -B package -DskipTests
-          nohup java -jar target/*.jar > app.log 2>&1 &
-          sleep 30
+      - name: Build Project
+        run: mvn -B package -DskipTests
 
-      # --- CHẠY TEST ---
       - name: Run Automation Tests
+        # Clean để xóa target cũ, nhưng allure-results ở root sẽ được ghi đè
         run: mvn clean test
         continue-on-error: true
 
-      # --- DEBUG: KIỂM TRA FILE KẾT QUẢ ---
-      - name: Check Allure Results Existence
+      # --- DEBUG: Kiểm tra thư mục gốc ---
+      - name: Check Results Existence (Root Folder)
         if: always()
         run: |
-          echo "Checking target folder..."
-          ls -F target/
-          echo "Checking allure-results..."
-          ls -R target/allure-results || echo "Folder not found"
+          echo "Listing root directory..."
+          ls -F
+          echo "Checking inside allure-results..."
+          ls -R allure-results || echo "Folder allure-results NOT FOUND!"
 
-      # --- NÂNG CẤP: XUẤT FILE LOG & KẾT QUẢ RA FILE ZIP ĐỂ TẢI VỀ ---
+      # --- SỬA ĐỔI 1: Upload cả folder screenshots và allure-results ở root ---
       - name: Upload Test Reports (Artifacts)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-execution-reports
+          if-no-files-found: warn
           path: |
+            target/surefire-reports/
             allure-results/
+            screenshots/
             app.log
 
-      # --- TẠO BÁO CÁO HTML ONLINE ---
       - name: Get Allure history
         uses: actions/checkout@v4
         if: always()
@@ -78,11 +77,12 @@ jobs:
           ref: gh-pages
           path: gh-pages
 
+      # --- SỬA ĐỔI 2: Trỏ allure_results vào thư mục gốc (bỏ chữ target/) ---
       - name: Generate Allure Report
         uses: simple-elf/allure-report-action@master
         if: always()
         with:
-          allure_results: target/allure-results
+          allure_results: allure-results
           allure_history: allure-history
           keep_reports: 20
 
